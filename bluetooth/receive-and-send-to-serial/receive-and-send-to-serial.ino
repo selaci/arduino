@@ -9,8 +9,7 @@ int legth;
 byte buffer[64] = {};
 
 void setup() {
-  Serial.begin(9600);
-
+  Serial.begin(115200);
 }
 
 void loop() {
@@ -24,5 +23,5 @@ void loop() {
     Serial.println();
   }
 
-  delay(100);
+  delay(50);
 }
