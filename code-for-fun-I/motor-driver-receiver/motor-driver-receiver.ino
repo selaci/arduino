@@ -56,9 +56,9 @@ public:
 
   int next() {
     if (isIncreasing()) {
-      nextToRight();
+      return nextToRight();
     } else {
-      nextToLeft();
+      return nextToLeft();
     }
   }
 
@@ -70,7 +70,7 @@ private:
 
   int nextToRight() {
     index++;
-    if (index = length - 1) {
+    if (index == length - 1) {
       increasing = false;
     }
 
@@ -79,7 +79,7 @@ private:
 
   int nextToLeft() {
     index--;
-    if (index = 0) {
+    if (index == 0) {
       increasing = true;
     }
 
@@ -106,25 +106,25 @@ Sequence* sequences[2] = { new Horizontal(), new Random() };
 /*
  * 74HC595 pin layout.
  */
-const byte DATA = 13;
+const byte DATA = 11;
 const byte LATCH = 12;
-const byte SHIFT = 11;
+const byte SHIFT = 13;
 
 /*
  * Left motor pin layout.
  */
 
-const byte EN1 = 10;
-const byte IN1 = 9;
-const byte IN2 = 8;
+const byte EN1 = 3;
+const byte IN1 = 4;
+const byte IN2 = 5;
 
 /*
  * Right motor pin layout.
  */
 
-const byte IN3 = 5;
-const byte IN4 = 4;
-const byte EN2 = 3;
+const byte IN3 = 8;
+const byte IN4 = 9;
+const byte EN2 = 10;
 
 /*
  * The minimum value that will be sent to the motors. If the current value
@@ -150,16 +150,31 @@ void setup() {
 
   // Initialise serial channel.
   Serial.begin(115200);
+
+  // Start with motors disabled.
+  digitalWrite(EN1, LOW);
+  digitalWrite(EN2, LOW);
 }
 
 const byte numChars = 32;
 char receivedChars[numChars];
 
-boolean newData = false;
+static boolean newData = false;
 
+int sequenceIndex = 0;
+
+int next;
 void loop() {
   recvWithStartEndMarkers();
   processCommand();
+
+  next = sequences[sequenceIndex]->next();
+
+  digitalWrite(LATCH, LOW);
+  shiftOut(DATA, SHIFT, MSBFIRST, next);
+  digitalWrite(LATCH, HIGH);
+
+  delay(75);
 }
 
 void recvWithStartEndMarkers() {
@@ -168,26 +183,24 @@ void recvWithStartEndMarkers() {
   char startMarker = '^';
   char endMarker = '$';
   char rc;
- 
+
   while (Serial.available() > 0 && newData == false) {
     rc = Serial.read();
 
     if (recvInProgress == true) {
       if (rc != endMarker) {
-	receivedChars[ndx] = rc;
-	ndx++;
-	if (ndx >= numChars) {
-	  ndx = numChars - 1;
-	}
-      }
-      else {
-	receivedChars[ndx] = '\0'; // terminate the string
-	recvInProgress = false;
-	ndx = 0;
-	newData = true;
+        receivedChars[ndx] = rc;
+	      ndx++;
+	      if (ndx >= numChars) {
+	        ndx = numChars - 1;
+	      }
+      } else {
+        receivedChars[ndx] = '\0'; // terminate the string
+	      recvInProgress = false;
+	      ndx = 0;
+        newData = true;
       }
     }
-
     else if (rc == startMarker) {
       recvInProgress = true;
     }
@@ -195,30 +208,91 @@ void recvWithStartEndMarkers() {
 }
 
 void processCommand() {
-  if (newData == true) {
+
+
+  if (newData) {
     String command = String(receivedChars);
-    if (command.startsWith("SEQUENCE")) {
+
+    if (command.startsWith("CHANGE_SEQUENCE")) {
 	    changeSequence();
     } else if (command.startsWith("MOVEMENT")) {
+
+      Serial.print("Command: ");
+      Serial.println(command);
+
       byte colon = command.indexOf(':');
       byte coma = command.indexOf(',');
       byte end = command.length();
 
-      int x = command.substring(colon, coma).toInt();
-      int y = command.substring(coma, end).toInt();
-
+      int x = command.substring(colon + 1, coma).toInt();
+      int y = command.substring(coma + 1, end).toInt();
       move(x, y);
     }
-    
+
     newData = false;
   }
-}  
+}
 
 void changeSequence() {
-  // TO BE DONE.
+  sequenceIndex = ++sequenceIndex % 2;
 }
+
+byte motorSpeed1 = 0;
+byte motorSpeed2 = 0;
 
 void move(int x, int y) {
-  // TO BE DONE.
-}
+  if ( y < 460 ) {
+    // Motor left backward.
+    digitalWrite(IN1, LOW);
+    digitalWrite(IN2, HIGH);
 
+    // Motor right backward.
+    digitalWrite(IN3, LOW);
+    digitalWrite(IN4, HIGH);
+
+    y = y - 460;
+    y = y * - 1;
+    motorSpeed1 = map(y, 0, 460, 0, 255);
+    motorSpeed2 = map(y, 0, 460, 0, 255);
+  } else if ( y > 564 ) {
+    // Motor left forward.
+    digitalWrite(IN1, HIGH);
+    digitalWrite(IN2, LOW);
+
+    // Motor right forward.
+    digitalWrite(IN3, HIGH);
+    digitalWrite(IN4, LOW);
+
+    motorSpeed1 = map(y, 564, 1023, 0, 255);
+    motorSpeed2 = map(y, 564, 1023, 0, 255);
+  } else {
+    motorSpeed1 = 0;
+    motorSpeed2 = 0;
+  }
+
+  if ( x < 460 ) {
+    // Turn left.
+    x = x - 460;
+    x = x * -1;
+
+    motorSpeed1 -= map(x, 0, 460, 0, 255);
+    motorSpeed2 += map(x, 0, 460, 0, 255);
+
+    if (motorSpeed1 < 0) { motorSpeed1 = 0; }
+    if (motorSpeed2 > 255) { motorSpeed2 = 255; }
+
+  } else if ( x > 564 ) {
+    // Turn right.
+    motorSpeed1 += map(x, 564, 1023, 0, 255);
+    motorSpeed2 -= map(x, 564, 1023, 0, 255);
+
+    if (motorSpeed1 > 255) { motorSpeed1 = 255; }
+    if (motorSpeed2 < 0) { motorSpeed2 = 0; }
+  }
+
+  if (motorSpeed1 < MINIMUM) { motorSpeed1 = 0; }
+  if (motorSpeed2 < MINIMUM) { motorSpeed2= 0; }
+
+  analogWrite(EN1, motorSpeed1);
+  analogWrite(EN2, motorSpeed2);
+}
