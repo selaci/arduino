@@ -1,13 +1,26 @@
+# Introduction
 
+This is a library that I use in my sketches that control certain vehicles that
+work like a tank. 
 
-/*
- * A program for me to develop a library for a joystick.
- * 
- * The joystick has two axis, X and Y and they both range from 0 to 1024.
- * 
- * The main program runs some tests to verify the output of the joystick.
- */
+It reads the position of the joystick, based on X and Y coordinates and
+transforms this information into power that needs to be delivered to both left
+and right motors.
 
+- X and Y range from 0 to 1023.
+- Power ranges from -255 to 255. It can actually be modified.
+  A negative value means that the motor should spin backwards.
+
+You can use this library as follows:
+```
+Joystick joystick(255); // Maximum power is 255.
+joystick.setCoordinates(230, 1023);
+int lPower = joystick.getLeftMotorPower();
+int rPower = joystick.getRightMotorPower();
+```
+
+And next is a few tests I execute to verify the correct behaviour.
+```
 #include "joystick.h"
 
 void setup() {
@@ -17,44 +30,6 @@ void setup() {
 Joystick joystick(255);
 
 void loop() {
-/*
-
-  int x;
-  int y;
-  int lPower;
-  int rPower;
-  float rad;
-  for(int i = 90; i >= 0; i -= 5) {
-    rad = 0.01745;
-    x = 512 * ( 1 + cos(i * rad));
-    y = 512 * ( 1 - sin(i * rad));
-    if (i < 23) {
-      lPower = - 255;
-      rPower = - 255 * ((i - 22.5) / 22.5);
-    } else if (i < 45) {
-      lPower = -255;
-      rPower = -255 * ((i - 22.5) / 45);
-    } else {
-      lPower = - 255;
-      rPower = - 255 * (1 - (90.0 - i) / 90);
-    }
-
-    Serial.print("verify(");
-    Serial.print(x);
-    Serial.print(", ");
-    Serial.print(y);
-    Serial.print(", ");
-    Serial.print(lPower);
-    Serial.print(", ");
-    Serial.print(rPower);
-    Serial.print(")");
-    Serial.print("; // ");
-    Serial.println(360 - i);
-  }
-
-  delay(200000);
-*/  
-  
   // Centre.
   verify(512, 512, 0, 0);
 
@@ -139,13 +114,13 @@ void loop() {
   verify(1006, 379, -255, 85);  // 345
   verify(1016, 423, -255, 141); // 350
   verify(1022, 467, -255, 198); // 355
-  
+
   delay(200000);
 }
 
 void verify(int x, int y, int expectedLeft, int expectedRight) {
   joystick.setCoordinates(x, y);
-  
+
   int lPower = joystick.getLeftMotorPower();
   int rPower = joystick.getRightMotorPower();
 
@@ -153,13 +128,13 @@ void verify(int x, int y, int expectedLeft, int expectedRight) {
   int lDifference = abs(lPower - expectedLeft);
   int rDifference = abs(rPower - expectedRight);
 
-  if (lPower >= -255 && lPower <= 255 && rPower >= -255 && rPower <= 255 
+  if (lPower >= -255 && lPower <= 255 && rPower >= -255 && rPower <= 255
       &&  lDifference <= tolerance && rDifference <= tolerance) {
     Serial.print("[OK]    for (");
   } else {
     Serial.print("[ERROR] for (");
   }
-  
+
   Serial.print(x);
   Serial.print(", ");
   Serial.print(y);
@@ -169,3 +144,4 @@ void verify(int x, int y, int expectedLeft, int expectedRight) {
   Serial.print(rPower);
   Serial.println(")");
 }
+```
