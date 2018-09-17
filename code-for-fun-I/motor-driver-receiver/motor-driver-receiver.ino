@@ -1,3 +1,6 @@
+#include <receiver.h>
+#include <joystick.h>
+
 /*
  * A motor driver receiver with additional LED sequence.
  *
@@ -114,17 +117,18 @@ const byte SHIFT = 13;
  * Left motor pin layout.
  */
 
-const byte EN1 = 3;
-const byte IN1 = 4;
-const byte IN2 = 5;
+const byte IN3 = 5;
+const byte IN4 = 4;
+const byte EN2 = 3;
 
 /*
  * Right motor pin layout.
  */
 
-const byte IN3 = 8;
-const byte IN4 = 9;
-const byte EN2 = 10;
+const byte EN1 = 10;
+const byte IN1 = 9;
+const byte IN2 = 8;
+
 
 /*
  * The minimum value that will be sent to the motors. If the current value
@@ -149,23 +153,25 @@ void setup() {
   pinMode(IN4, OUTPUT);
 
   // Initialise serial channel.
-  Serial.begin(115200);
+  Serial.begin(9600);
 
   // Start with motors disabled.
   digitalWrite(EN1, LOW);
   digitalWrite(EN2, LOW);
 }
 
-const byte numChars = 32;
-char receivedChars[numChars];
-
-static boolean newData = false;
-
 int sequenceIndex = 0;
 
 int next;
+
+// Serial receiver.
+Receiver receiver('^', '$');
+
+// Joystick that calculates power for the motors, based on coordinates "x" and "y".
+Joystick joystick(255);
+
 void loop() {
-  recvWithStartEndMarkers();
+  receiver.read();
   processCommand();
 
   next = sequences[sequenceIndex]->next();
@@ -177,59 +183,43 @@ void loop() {
   delay(75);
 }
 
-void recvWithStartEndMarkers() {
-  static boolean recvInProgress = false;
-  static byte ndx = 0;
-  char startMarker = '^';
-  char endMarker = '$';
-  char rc;
+int lForward = true;
+int rForward = true;
+       
+boolean leftMotorHasScheduledPower = false;
+int scheduledPowerForLeftMotor;
 
-  while (Serial.available() > 0 && newData == false) {
-    rc = Serial.read();
-
-    if (recvInProgress == true) {
-      if (rc != endMarker) {
-        receivedChars[ndx] = rc;
-	      ndx++;
-	      if (ndx >= numChars) {
-	        ndx = numChars - 1;
-	      }
-      } else {
-        receivedChars[ndx] = '\0'; // terminate the string
-	      recvInProgress = false;
-	      ndx = 0;
-        newData = true;
-      }
-    }
-    else if (rc == startMarker) {
-      recvInProgress = true;
-    }
-  }
-}
+boolean rightMotorHasScheduledPower;
+int scheduledPowerForRightMotor;
 
 void processCommand() {
-
-
-  if (newData) {
-    String command = String(receivedChars);
+  if (receiver.hasData()) {
+    String command = receiver.getData();
 
     if (command.startsWith("CHANGE_SEQUENCE")) {
 	    changeSequence();
     } else if (command.startsWith("MOVEMENT")) {
 
-      Serial.print("Command: ");
-      Serial.println(command);
-
       byte colon = command.indexOf(':');
       byte coma = command.indexOf(',');
-      byte end = command.length();
+      byte _end = command.length();
 
       int x = command.substring(colon + 1, coma).toInt();
-      int y = command.substring(coma + 1, end).toInt();
-      move(x, y);
-    }
+      int y = command.substring(coma + 1, _end).toInt();
+      
+      joystick.setCoordinates(x, y);
 
-    newData = false;
+      leftMotorHasScheduledPower = false;
+      rightMotorHasScheduledPower = false;
+      
+      move(joystick.getLeftMotorPower(), joystick.getRightMotorPower());
+    }
+  } else {
+    if (scheduledPowerForLeftMotor || scheduledPowerForRightMotor) {\
+      scheduledPowerForLeftMotor = false;
+      scheduledPowerForRightMotor = false;
+      applyPower(scheduledPowerForLeftMotor, scheduledPowerForRightMotor);
+    }
   }
 }
 
@@ -237,62 +227,91 @@ void changeSequence() {
   sequenceIndex = ++sequenceIndex % 2;
 }
 
-byte motorSpeed1 = 0;
-byte motorSpeed2 = 0;
+void move(int lPower, int rPower) {
+  if (leftMotorHasChangedDirection(lPower)) {
+    lPower = 0;
+    setSchedulePowerLeftMotor(lPower);
+  }
 
-void move(int x, int y) {
-  if ( y < 460 ) {
-    // Motor left backward.
-    digitalWrite(IN1, LOW);
-    digitalWrite(IN2, HIGH);
+  setDirectionForLeftMotor(lPower);
+      
+  if (rightMotorHasChangedDirection(rPower)) {
+    setSchedulePowerForRightMotor(rPower);  
+    rPower = 0;
+  }
+  
+  setDirectionForRightMotor(rPower);
+  
+  applyPower(lPower, rPower);
+}
 
-    // Motor right backward.
-    digitalWrite(IN3, LOW);
-    digitalWrite(IN4, HIGH);
+boolean leftMotorHasChangedDirection(int lPower) {
+  return motorHasChangedDirection(lForward, lPower);
+}
 
-    y = y - 460;
-    y = y * - 1;
-    motorSpeed1 = map(y, 0, 460, 0, 255);
-    motorSpeed2 = map(y, 0, 460, 0, 255);
-  } else if ( y > 564 ) {
-    // Motor left forward.
+boolean rightMotorHasChangedDirection(int rPower) {
+  return motorHasChangedDirection(rForward, rPower);
+}
+
+boolean motorHasChangedDirection(boolean mForward, int mPower) {
+  if(mPower == 0) {
+    return false;
+  }
+  
+  if (mForward) { // It was moving forward before.
+    if (mPower > 0) { // It moves forward now.
+      return false;
+    } else { // It changes direction.
+      return true;
+    }
+  } else { // It was moving backward before.
+    if (mPower < 0) { // It moves backward now.
+      return false;
+    } else { // It changes direction.
+      return true;
+    }
+  }
+}
+
+void setDirectionForLeftMotor(int lPower) {
+  if (lPower > 0) {
+    lForward = true;
+
     digitalWrite(IN1, HIGH);
     digitalWrite(IN2, LOW);
+  } else {
+    lForward = false;
 
-    // Motor right forward.
     digitalWrite(IN3, HIGH);
     digitalWrite(IN4, LOW);
+  }
+}
 
-    motorSpeed1 = map(y, 564, 1023, 0, 255);
-    motorSpeed2 = map(y, 564, 1023, 0, 255);
+void setDirectionForRightMotor(int rPower) {
+  if (rPower > 0) {
+    rForward = true;
+
+    digitalWrite(IN3, HIGH);
+    digitalWrite(IN4, LOW);    
   } else {
-    motorSpeed1 = 0;
-    motorSpeed2 = 0;
+    rForward = false;
+    
+    digitalWrite(IN3, LOW);
+    digitalWrite(IN4, HIGH);
   }
+}
 
-  if ( x < 460 ) {
-    // Turn left.
-    x = x - 460;
-    x = x * -1;
+void applyPower(int lPower, int rPower) {
+  analogWrite(EN1, lPower);
+  analogWrite(EN2, rPower);
+}
+     
+void setSchedulePowerLeftMotor(int power) {
+  leftMotorHasScheduledPower = true;
+  scheduledPowerForLeftMotor = power;
+}
 
-    motorSpeed1 -= map(x, 0, 460, 0, 255);
-    motorSpeed2 += map(x, 0, 460, 0, 255);
-
-    if (motorSpeed1 < 0) { motorSpeed1 = 0; }
-    if (motorSpeed2 > 255) { motorSpeed2 = 255; }
-
-  } else if ( x > 564 ) {
-    // Turn right.
-    motorSpeed1 += map(x, 564, 1023, 0, 255);
-    motorSpeed2 -= map(x, 564, 1023, 0, 255);
-
-    if (motorSpeed1 > 255) { motorSpeed1 = 255; }
-    if (motorSpeed2 < 0) { motorSpeed2 = 0; }
-  }
-
-  if (motorSpeed1 < MINIMUM) { motorSpeed1 = 0; }
-  if (motorSpeed2 < MINIMUM) { motorSpeed2= 0; }
-
-  analogWrite(EN1, motorSpeed1);
-  analogWrite(EN2, motorSpeed2);
+void setSchedulePowerForRightMotor(int power) {
+  rightMotorHasScheduledPower = true;
+  scheduledPowerForRightMotor = power;
 }
