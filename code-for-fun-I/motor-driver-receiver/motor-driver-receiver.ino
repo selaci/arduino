@@ -1,5 +1,4 @@
-#include <receiver.h>
-#include <joystick.h>
+#include "constants.h"
 
 /*
  * A motor driver receiver with additional LED sequence.
@@ -106,41 +105,6 @@ public:
  */
 Sequence* sequences[2] = { new Horizontal(), new Random() };
 
-/*
- * 74HC595 pin layout.
- */
-const byte DATA = 11;
-const byte LATCH = 12;
-const byte SHIFT = 13;
-
-/*
- * Left motor pin layout.
- */
-
-const byte IN3 = 5;
-const byte IN4 = 4;
-const byte EN2 = 3;
-
-/*
- * Right motor pin layout.
- */
-
-const byte EN1 = 10;
-const byte IN1 = 9;
-const byte IN2 = 8;
-
-
-/*
- * The minimum value that will be sent to the motors. If the current value
- * is lower than this minimum then, 0 is delivered.
- */
-const byte MINIMUM = 30;
-
-/*
- * Commands.
- */
-const char* MOVEMENT = "MOVEMENT";
-const char* SEQUENCE = "SEQUENCE";
 
 void setup() {
   pinMode(DATA, OUTPUT);
@@ -160,158 +124,17 @@ void setup() {
   digitalWrite(EN2, LOW);
 }
 
-int sequenceIndex = 0;
-
 int next;
 
-// Serial receiver.
-Receiver receiver('^', '$');
-
-// Joystick that calculates power for the motors, based on coordinates "x" and "y".
-Joystick joystick(255);
+void processSerial();
 
 void loop() {
-  receiver.read();
-  processCommand();
+  processSerial();
 
-  next = sequences[sequenceIndex]->next();
-
+/*
   digitalWrite(LATCH, LOW);
   shiftOut(DATA, SHIFT, MSBFIRST, next);
   digitalWrite(LATCH, HIGH);
-
+*/
   delay(75);
-}
-
-int lForward = true;
-int rForward = true;
-       
-boolean leftMotorHasScheduledPower = false;
-int scheduledPowerForLeftMotor;
-
-boolean rightMotorHasScheduledPower;
-int scheduledPowerForRightMotor;
-
-void processCommand() {
-  if (receiver.hasData()) {
-    String command = receiver.getData();
-
-    if (command.startsWith("CHANGE_SEQUENCE")) {
-	    changeSequence();
-    } else if (command.startsWith("MOVEMENT")) {
-
-      byte colon = command.indexOf(':');
-      byte coma = command.indexOf(',');
-      byte _end = command.length();
-
-      int x = command.substring(colon + 1, coma).toInt();
-      int y = command.substring(coma + 1, _end).toInt();
-      
-      joystick.setCoordinates(x, y);
-
-      leftMotorHasScheduledPower = false;
-      rightMotorHasScheduledPower = false;
-      
-      move(joystick.getLeftMotorPower(), joystick.getRightMotorPower());
-    }
-  } else {
-    if (scheduledPowerForLeftMotor || scheduledPowerForRightMotor) {\
-      scheduledPowerForLeftMotor = false;
-      scheduledPowerForRightMotor = false;
-      applyPower(scheduledPowerForLeftMotor, scheduledPowerForRightMotor);
-    }
-  }
-}
-
-void changeSequence() {
-  sequenceIndex = ++sequenceIndex % 2;
-}
-
-void move(int lPower, int rPower) {
-  if (leftMotorHasChangedDirection(lPower)) {
-    lPower = 0;
-    setSchedulePowerLeftMotor(lPower);
-  }
-
-  setDirectionForLeftMotor(lPower);
-      
-  if (rightMotorHasChangedDirection(rPower)) {
-    setSchedulePowerForRightMotor(rPower);  
-    rPower = 0;
-  }
-  
-  setDirectionForRightMotor(rPower);
-  
-  applyPower(lPower, rPower);
-}
-
-boolean leftMotorHasChangedDirection(int lPower) {
-  return motorHasChangedDirection(lForward, lPower);
-}
-
-boolean rightMotorHasChangedDirection(int rPower) {
-  return motorHasChangedDirection(rForward, rPower);
-}
-
-boolean motorHasChangedDirection(boolean mForward, int mPower) {
-  if(mPower == 0) {
-    return false;
-  }
-  
-  if (mForward) { // It was moving forward before.
-    if (mPower > 0) { // It moves forward now.
-      return false;
-    } else { // It changes direction.
-      return true;
-    }
-  } else { // It was moving backward before.
-    if (mPower < 0) { // It moves backward now.
-      return false;
-    } else { // It changes direction.
-      return true;
-    }
-  }
-}
-
-void setDirectionForLeftMotor(int lPower) {
-  if (lPower > 0) {
-    lForward = true;
-
-    digitalWrite(IN1, HIGH);
-    digitalWrite(IN2, LOW);
-  } else {
-    lForward = false;
-
-    digitalWrite(IN3, HIGH);
-    digitalWrite(IN4, LOW);
-  }
-}
-
-void setDirectionForRightMotor(int rPower) {
-  if (rPower > 0) {
-    rForward = true;
-
-    digitalWrite(IN3, HIGH);
-    digitalWrite(IN4, LOW);    
-  } else {
-    rForward = false;
-    
-    digitalWrite(IN3, LOW);
-    digitalWrite(IN4, HIGH);
-  }
-}
-
-void applyPower(int lPower, int rPower) {
-  analogWrite(EN1, lPower);
-  analogWrite(EN2, rPower);
-}
-     
-void setSchedulePowerLeftMotor(int power) {
-  leftMotorHasScheduledPower = true;
-  scheduledPowerForLeftMotor = power;
-}
-
-void setSchedulePowerForRightMotor(int power) {
-  rightMotorHasScheduledPower = true;
-  scheduledPowerForRightMotor = power;
 }
