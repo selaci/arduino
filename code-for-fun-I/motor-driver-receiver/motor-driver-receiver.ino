@@ -1,140 +1,137 @@
 #include "constants.h"
+#include "sequence.h"
+#include "car.h"
 
 /*
  * A motor driver receiver with additional LED sequence.
  *
  * This program reads data from the serial channel and decodes it
- * into commands. Each command follows this format:
- *  ^COMMAND_NAME[:COMMAND_DATA]$
- *
- * The first character is "^" and the last one is "$".
- * Some commands may have additional data, which must follow the
- * command name with ":".
- *
- * The supported commands are:
- *
- * ^CHANGE_SEQUENCE$
- *  * Iterates through the LED sequences that have been implemented
- *    in this program.
- * ^MOVEMENT:x,y$
- *  * Changes the power deliever to the left and right motor.
- *    x , is the horizontal axis and ranges from 0 to 1023.
- *    y , is the vertical axis and ranges from 0 to 1023.
- *    These ranges map to values that range from 0 to 255.
- *    Because the motors seem to make some noise at lower power levels, this
- *    application only delivers power to the motors if the power level is
- *    greater than 30.
+ * into commands.
  */
 
-/*
- * An abstract class that defines the contract each LED sequence must implement.
- *
- * Each sequence is supposed to upate the current sequence at a certain intervals.
- * The LED is controlled by a 74HC595 shift register. So the sequence returns an
- * integer. In this case the integer must range from 0 to 255.
- */
-class Sequence {
-public:
-
-  /*
-   * The next integer in the sequence. It can actually be any value, even the same
-   * one in case the sequence does not change for whatever reason.
-   */
-  virtual int next() = 0;
-};
-
-/*
- * A sequence that moves from left to right and then back from right to left.
- */
-class Horizontal: public Sequence {
-private:
-
-  int sequence[8] = {1, 2, 4, 8, 16, 32, 64, 128};
-  int length = 8;
-  int index = -1;
-  bool increasing = true;
-
-public:
-
-  int next() {
-    if (isIncreasing()) {
-      return nextToRight();
-    } else {
-      return nextToLeft();
-    }
-  }
-
-private:
-
-  bool isIncreasing() {
-    return increasing;
-  }
-
-  int nextToRight() {
-    index++;
-    if (index == length - 1) {
-      increasing = false;
-    }
-
-    return sequence[index];
-  }
-
-  int nextToLeft() {
-    index--;
-    if (index == 0) {
-      increasing = true;
-    }
-
-    return sequence[index];
-  }
-};
-
-/*
- * A random sequencer.
- */
-class Random: public Sequence {
-public:
-
-  int next() {
-    return random(0, 256); // [0, 256) => [0, 255]
-  }
-};
 
 /*
  * An array of sequences.
  */
+int lengthSequences = 2;
 Sequence* sequences[2] = { new Horizontal(), new Random() };
 
+/*
+ * The mega CAR!
+ */
+Car* car;
 
 void setup() {
-  pinMode(DATA, OUTPUT);
-  pinMode(LATCH, OUTPUT);
-  pinMode(SHIFT, OUTPUT);
-
-  pinMode(IN1, OUTPUT);
-  pinMode(IN2, OUTPUT);
-  pinMode(IN3, OUTPUT);
-  pinMode(IN4, OUTPUT);
-
   // Initialise serial channel.
   Serial.begin(9600);
 
-  // Start with motors disabled.
-  digitalWrite(EN1, LOW);
-  digitalWrite(EN2, LOW);
+  // Build the car instance.
+  Motor* leftMotor = new Motor(EN1, IN1, IN2);
+  Motor* rightMotor = new Motor(EN2, IN3, IN4);
+
+  car = new Car(leftMotor, rightMotor);
+
+  // Set the 74HC595 pins.
+  pinMode(DATA, OUTPUT);
+  pinMode(LATCH, OUTPUT);
+  pinMode(SHIFT, OUTPUT);
 }
 
-int next;
 
-void processSerial();
-
-void loop() {
-  processSerial();
+int i = 0;
 
 /*
+ * Retrun true if the command is a "MOVE_COMMAND",
+ * false otherwise.
+ */
+bool isMoveCommand(byte message) {
+  return (message & 0xC0) == MOVE_COMMAND;
+}
+
+/*
+ * Rotate the car to the left or to the right.
+ * 
+ * @param h The horizontal division number. "h" should never be equal 
+ *          to the neutral division number. If that happens then,
+ *          there is bug in the code.
+ */
+void rotate(int h) {
+  int power;
+  if (h > NEUTRAL_DIVISION_NUMBER) {
+    if (h > MAX_DIVISION_NUMBER) { 
+      h = MAX_DIVISION_NUMBER;
+    }
+    power = map(h, NEUTRAL_DIVISION_NUMBER, MAX_DIVISION_NUMBER, 0, 255);
+    car->rotateToRight(power);
+
+  } else {
+    if (h < 0) {
+      h = 0;
+    }
+    power = map(h, 0, NEUTRAL_DIVISION_NUMBER, 255, 0);
+    car->rotateToLeft(power);
+  }
+}
+
+/*
+ * Move the car along the vertical axis. Either forward or backward.
+ * 
+ * @param v The vertical division number. "v" should never be equal 
+ *          to the neutral division number. If that happens then,
+ *          there is bug in the code.
+ */
+void moveStraight(int v) {
+  int power;
+  if (v > NEUTRAL_DIVISION_NUMBER) {
+    if (v > MAX_DIVISION_NUMBER) {
+      v = MAX_DIVISION_NUMBER;
+    }
+    
+    power = map(v, NEUTRAL_DIVISION_NUMBER, 0, 0, 255);
+    car->moveForward(power);
+  } else {
+    if (v < 0) { 
+      v = 0;
+    }
+    power = map(v, NEUTRAL_DIVISION_NUMBER, MAX_DIVISION_NUMBER, 0, 255);
+    car->moveBackward(power);
+  }
+}
+/*
+ * Move the car according to the message.
+ * 
+ * @param message The encoded message that contains the vertical 
+ *                and horizontal values.
+ */
+void move(byte message) {
+  int h = message & 0x07;
+
+  if (h !=  NEUTRAL_DIVISION_NUMBER) {
+    rotate(h);
+  } else {
+    int v = (message & 0x38) >> 3;  
+    moveStraight(h); // Either forward or backward.
+  }
+}
+
+void loop() {
+  // Read and process all serial data.
+  while(Serial.available()) {
+    byte message = Serial.read();
+    Serial.print("Message: ");
+    Serial.println(message);
+    if (isMoveCommand(message)) {
+      move(message);
+    } else { // At this moment, there are only two commands.
+      i = (i + 1) % lengthSequences;
+    }
+  }
+
+  // Update the LEDs.
   digitalWrite(LATCH, LOW);
-  shiftOut(DATA, SHIFT, MSBFIRST, next);
+  shiftOut(DATA, SHIFT, MSBFIRST, sequences[i]->next());
   digitalWrite(LATCH, HIGH);
-*/
+
+  // Sleep. ZZZzzzZZZzzz ...
   delay(75);
 }

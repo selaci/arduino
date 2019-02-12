@@ -11,12 +11,25 @@ const bool DEBUG = false;
 /*
  * The command to change the LED sequence.
  */
-const int CHANGE_LED_SEQUENCE = 16;
+const int CHANGE_LED_SEQUENCE_COMMAND = 0x00;
+
 
 /*
  * The commnad to move the vehicle.
  */
-const int MOVE = 32;
+const int MOVE_COMMAND = 0x40;
+
+/*
+ * The number of divisions. From 0 to (max -1)
+ */
+const int MAX_DIVISION_NUMBER = 6;
+
+/*
+ * The division number that acts as a neural position or
+ * in other words that indicates that no power should be
+ * applied.
+ */
+const int NEUTRAL_DIVISION_NUMBER = 3;
 
 /*
  * A message to be sent in case the command can not be decoded properly.
