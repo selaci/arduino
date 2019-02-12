@@ -13,11 +13,11 @@ Motor::Motor(byte en, byte in1, byte in2) {
 void Motor::moveForward(byte power) {
   digitalWrite(_in1, HIGH);
   digitalWrite(_in2, LOW);
-  digitalWrite(_en, power);
+  analogWrite(_en, power);
 }
 
 void Motor::moveBackward(byte power) {
   digitalWrite(_in1, LOW);
   digitalWrite(_in2, HIGH);
-  digitalWrite(_en, power);
+  analogWrite(_en, power);
 }

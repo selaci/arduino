@@ -12,7 +12,7 @@ void Car::moveForward(byte power) {
 
 void Car::moveBackward(byte power) {
   _leftMotor->moveBackward(power);
-  _rightMotor->moveForward(power);
+  _rightMotor->moveBackward(power);
 }
 
 void Car::rotateToLeft(byte power) {

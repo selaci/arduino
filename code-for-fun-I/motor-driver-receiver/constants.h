@@ -6,7 +6,7 @@
 /*
  * A constant to control output messages. For development purposes.
  */
-const bool DEBUG = false;
+const bool DEBUG = true;
 
 /*
  * The command to change the LED sequence.
@@ -53,8 +53,8 @@ const byte SHIFT = 4; // ST_CH
  */
 
 const byte EN2 = 9;
-const byte IN4 = 8;
-const byte IN3 = 7;
+const byte IN4 = 7;
+const byte IN3 = 8;
 
 /*
  * Right motor pin layout.
@@ -64,11 +64,11 @@ const byte EN1 = 10;
 const byte IN1 = 11;
 const byte IN2 = 12;
 
-
 /*
- * The minimum value that will be sent to the motors. If the current value
- * is lower than this minimum then, 0 is delivered.
+ * The maximum power that will be delivered to the motors.
+ * I use this in order to limit the speed. Otherwise the car
+ * may get a bit out of control.
  */
-const byte MINIMUM = 30;
+const byte MAX_POWER = 180;
 
 #endif

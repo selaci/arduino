@@ -26,8 +26,8 @@ void setup() {
   Serial.begin(9600);
 
   // Build the car instance.
-  Motor* leftMotor = new Motor(EN1, IN1, IN2);
-  Motor* rightMotor = new Motor(EN2, IN3, IN4);
+  Motor* leftMotor = new Motor(EN2, IN3, IN4);
+  Motor* rightMotor = new Motor(EN1, IN1, IN2);
 
   car = new Car(leftMotor, rightMotor);
 
@@ -61,15 +61,24 @@ void rotate(int h) {
     if (h > MAX_DIVISION_NUMBER) { 
       h = MAX_DIVISION_NUMBER;
     }
-    power = map(h, NEUTRAL_DIVISION_NUMBER, MAX_DIVISION_NUMBER, 0, 255);
-    car->rotateToRight(power);
-
+    power = map(h, NEUTRAL_DIVISION_NUMBER, MAX_DIVISION_NUMBER, 0, MAX_POWER);
+    car->rotateToRight(power / 2);
+    if (DEBUG) {
+      Serial.print("car->rotateToRight(");
+      Serial.print(power);
+      Serial.println(")");
+    }
   } else {
     if (h < 0) {
       h = 0;
     }
-    power = map(h, 0, NEUTRAL_DIVISION_NUMBER, 255, 0);
-    car->rotateToLeft(power);
+    power = map(h, 0, NEUTRAL_DIVISION_NUMBER, MAX_POWER, 0);
+    car->rotateToLeft(power / 2);
+    if (DEBUG) {
+      Serial.print("car->rotateToLeft(");
+      Serial.print(power);
+      Serial.println(")");
+    }
   }
 }
 
@@ -82,19 +91,30 @@ void rotate(int h) {
  */
 void moveStraight(int v) {
   int power;
-  if (v > NEUTRAL_DIVISION_NUMBER) {
-    if (v > MAX_DIVISION_NUMBER) {
-      v = MAX_DIVISION_NUMBER;
-    }
-    
-    power = map(v, NEUTRAL_DIVISION_NUMBER, 0, 0, 255);
-    car->moveForward(power);
-  } else {
-    if (v < 0) { 
+  if (v < NEUTRAL_DIVISION_NUMBER) {
+    if (v < 0) {
       v = 0;
     }
-    power = map(v, NEUTRAL_DIVISION_NUMBER, MAX_DIVISION_NUMBER, 0, 255);
+    
+    power = map(v, NEUTRAL_DIVISION_NUMBER, 0, 0, MAX_POWER);
+    car->moveForward(power);
+
+    if (DEBUG) {
+      Serial.print("car->moveForward(");
+      Serial.print(power);
+      Serial.println(")");
+    }
+  } else {
+    if (v > MAX_DIVISION_NUMBER) { 
+      v = MAX_DIVISION_NUMBER;
+    }
+    power = map(v, NEUTRAL_DIVISION_NUMBER, MAX_DIVISION_NUMBER, 0, MAX_POWER);
     car->moveBackward(power);
+    if (DEBUG) {
+      Serial.print("car->moveBackward(");
+      Serial.print(power);
+      Serial.println(")");
+    }
   }
 }
 /*
@@ -110,7 +130,7 @@ void move(byte message) {
     rotate(h);
   } else {
     int v = (message & 0x38) >> 3;  
-    moveStraight(h); // Either forward or backward.
+    moveStraight(v); // Either forward or backward.
   }
 }
 
@@ -118,7 +138,6 @@ void loop() {
   // Read and process all serial data.
   while(Serial.available()) {
     byte message = Serial.read();
-    Serial.print("Message: ");
     Serial.println(message);
     if (isMoveCommand(message)) {
       move(message);
