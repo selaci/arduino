@@ -10,6 +10,9 @@ class Car {
   Motor* _leftMotor;
   Motor* _rightMotor;
 
+  float _lPowerDistribution;
+  float _rPowerDistribution;
+
   public:
 
   /*
@@ -50,6 +53,12 @@ class Car {
    * @param power The power the motors use to move.
    */
   void rotateToRight(byte power);
+
+  /*
+   * Sets the power distribution between the left and the right motor.
+   * This number needs to ranged between [0, 2] for each motor.
+   */
+  void setDistribution(float left, float right);
 };
 
 #endif

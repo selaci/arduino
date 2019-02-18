@@ -11,13 +11,18 @@ const bool DEBUG = true;
 /*
  * The command to change the LED sequence.
  */
-const int CHANGE_LED_SEQUENCE_COMMAND = 0x00;
+const byte CHANGE_LED_SEQUENCE_COMMAND = 0x00;
 
 
 /*
  * The commnad to move the vehicle.
  */
-const int MOVE_COMMAND = 0x40;
+const byte MOVE_COMMAND = 0x40;
+
+/*
+ * The command to distribute power between the motors.
+ */
+const byte DISTRIBUTION_COMMAND = 0x80;
 
 /*
  * The number of divisions. From 0 to (max -1)
@@ -69,6 +74,6 @@ const byte IN2 = 12;
  * I use this in order to limit the speed. Otherwise the car
  * may get a bit out of control.
  */
-const byte MAX_POWER = 180;
+const byte MAX_POWER = 170;
 
 #endif

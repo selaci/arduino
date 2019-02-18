@@ -35,6 +35,17 @@ class Motor {
    * @param power The power the motor will use to move backward.
    */
   void moveBackward(byte power);
+
+  private:
+
+  /*
+   * Ensures that the power belongs to the [0, 255] range, both included.
+   * If the power is lower than 0 then, 0 is returned. If the power is
+   * higher that 255 then, 255 is returned.
+   *
+   * @param power The power value that needs to be sanatised.
+   */
+  byte sanatisePower(byte power);
 };
 
 #endif

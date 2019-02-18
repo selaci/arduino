@@ -16,10 +16,26 @@
 int lengthSequences = 2;
 Sequence* sequences[2] = { new Horizontal(), new Random() };
 
+/* An index to keep track of the sequence number. */
+int i = 0;
+
+
 /*
  * The mega CAR!
  */
 Car* car;
+
+/*
+ * The variable to boost or slow down the left motor based on the
+ * distribution of power between the left and the right motor.
+ */
+float lPowerDistribution = 1;
+
+/*
+ * The variable to boost or slow down the right motor based on the
+ * distribution of power between the left and the right motor.
+ */
+float rPowerDistribution = 1;
 
 void setup() {
   // Initialise serial channel.
@@ -35,17 +51,6 @@ void setup() {
   pinMode(DATA, OUTPUT);
   pinMode(LATCH, OUTPUT);
   pinMode(SHIFT, OUTPUT);
-}
-
-
-int i = 0;
-
-/*
- * Retrun true if the command is a "MOVE_COMMAND",
- * false otherwise.
- */
-bool isMoveCommand(byte message) {
-  return (message & 0xC0) == MOVE_COMMAND;
 }
 
 /*
@@ -134,16 +139,39 @@ void move(byte message) {
   }
 }
 
+void processMessage(byte message) {
+  byte command = message & 0xC0;
+  if (DEBUG) {
+    Serial.println(message);
+  }
+
+  if (command == MOVE_COMMAND) {
+    move(message);
+  } else if (command == CHANGE_LED_SEQUENCE_COMMAND) {
+    i = (i + 1) % lengthSequences;
+  } else { // DISTRIBUTION
+    byte distribution = message & 0x3F;
+    lPowerDistribution = 2 - (2 * distribution) / 100.0;
+    rPowerDistribution = 2 - lPowerDistribution;
+
+    car->setDistribution(lPowerDistribution, rPowerDistribution);
+
+    if (DEBUG) {
+      Serial.print("Distribution: ");
+      Serial.print(distribution);
+      Serial.print(", lPowerDistribution: ");
+      Serial.print(lPowerDistribution);
+      Serial.print(", rPowerDistribution: ");
+      Serial.println(rPowerDistribution);
+    }
+  }
+}
+
 void loop() {
   // Read and process all serial data.
   while(Serial.available()) {
     byte message = Serial.read();
-    Serial.println(message);
-    if (isMoveCommand(message)) {
-      move(message);
-    } else { // At this moment, there are only two commands.
-      i = (i + 1) % lengthSequences;
-    }
+    processMessage(message);
   }
 
   // Update the LEDs.
