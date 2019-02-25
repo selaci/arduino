@@ -6,7 +6,7 @@
 /*
  * A constant to control output messages. For development purposes.
  */
-const bool DEBUG = true;
+const bool DEBUG = false;
 
 /*
  * The command to change the LED sequence.

@@ -129,28 +129,31 @@ void moveStraight(int v) {
  *                and horizontal values.
  */
 void move(byte message) {
-  int h = message & 0x07;
+  int h = (message & 0x38) >> 3;
 
   if (h !=  NEUTRAL_DIVISION_NUMBER) {
     rotate(h);
   } else {
-    int v = (message & 0x38) >> 3;  
+    int v = message & 0x07;  
     moveStraight(v); // Either forward or backward.
   }
 }
 
 void processMessage(byte message) {
   byte command = message & 0xC0;
-  if (DEBUG) {
-    Serial.println(message);
-  }
 
   if (command == MOVE_COMMAND) {
     move(message);
+    
   } else if (command == CHANGE_LED_SEQUENCE_COMMAND) {
+    if (DEBUG) {
+      Serial.print("Change LED Sequence");
+    }
+    
     i = (i + 1) % lengthSequences;
   } else { // DISTRIBUTION
-    byte distribution = message & 0x3F;
+    
+    byte distribution = message & 0x7F;
     lPowerDistribution = 2 - (2 * distribution) / 100.0;
     rPowerDistribution = 2 - lPowerDistribution;
 
@@ -170,7 +173,13 @@ void processMessage(byte message) {
 void loop() {
   // Read and process all serial data.
   while(Serial.available()) {
-    byte message = Serial.read();
+    int message = Serial.read();
+
+    // Print the message that has been received.
+    if (DEBUG) {
+      Serial.println(message, BIN);
+    }
+    
     processMessage(message);
   }
 
