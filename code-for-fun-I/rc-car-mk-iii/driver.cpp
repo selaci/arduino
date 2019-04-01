@@ -22,8 +22,7 @@ Driver::Driver(Motor* rightMotor, Motor* leftMotor, int maxPercentage) {
     _maxPercentage = maxPercentage;
   }
 
-  // It returns roughly 60 out of 255.
-  _power = determinePower(24);
+  _power = 255;
 }
 
 void Driver::stop() {
@@ -47,8 +46,8 @@ void Driver::moveBackward() {
 }
   
 void Driver::rotateCounterClockwise() {
-  _rightMotor->moveForward(_power/2);
-  _leftMotor->moveBackward(_power/2);
+  _rightMotor->moveBackward(_power/2);
+  _leftMotor->moveForward(_power/2);
 }
 
 void Driver::setSpeed(int percentage) {

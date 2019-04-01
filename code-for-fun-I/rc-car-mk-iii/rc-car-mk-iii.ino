@@ -1,9 +1,9 @@
 #include "sequence.h"
 #include "driver.h"
 
-const int DS    = 2;
+const int DS    = 4;
 const int LATCH = 3;
-const int CLOCK = 4;
+const int CLOCK = 2;
 
 const int MAX_SEQUENCES = 6;
 
@@ -125,12 +125,35 @@ int decodeAndExecute(byte message) {
       break;
   }
 }
+
+int counter = 0;
+unsigned int next;
+int number;
 void loop() {
+  /*
   if (Serial.available()) {
     byte message = Serial.read();
     decodeAndExecute(message);
   }
+  */
+  if (counter == 0) { 
+    driver->rotateClockwise();
+  } else if (counter == 39) {
+    driver->stop();
+  } else if (counter == 78) {
+    driver->rotateCounterClockwise();
+  } else if (counter == 126) {
+    counter = 0;
+  }  
 
-  sequence->next();
+  digitalWrite(LATCH, LOW);
+  next = sequence->next();
+  number = (next & 0xFF00) >> 8;
+  shiftOut(DS, CLOCK, MSBFIRST, number);
+  number = (next & 0x00FF);
+  shiftOut(DS, CLOCK, MSBFIRST, number);
+  digitalWrite(LATCH, HIGH);
+  
+  counter++;
   delay(DELAY);
 }
