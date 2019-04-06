@@ -1,17 +1,61 @@
 #include "sequence.h"
 
-int Horizontal::next() {
-  if (isIncreasing()) {
-    return nextToRight();
-  } else {
-    return nextToLeft();
-  }
+unsigned int Sequence::next() {
+  return 0;
 }
 
-bool Horizontal::isIncreasing() {
-  return increasing;
+Sequence::~Sequence() {}
+
+unsigned int Circular::next() {
+  unsigned long number = ((_number << 1) % 65536);
+
+  if (number == 0) {
+    _number = 1;
+  } else {
+    _number = (unsigned int) number;
+  }
+
+  return _number;
 }
-  
-int Random::next() {
-  return random(0, 256); // [0, 256) => [0, 255]
+
+unsigned int DoubleCircular::next() {
+    _index = (_index + 1) % 8;
+  return _sequence[_index];
+}
+
+unsigned int StarTrek::next() {
+    _index = (_index + 1) % 4;
+  return _sequence[_index];
+}
+
+unsigned int KnightRider::next() {
+    _index = (_index + 1) % 14;
+  return _sequence[_index];
+}
+
+unsigned int DoubleKnightRider::next() {
+  _index = (_index + 1) % 14;
+  return _sequence[_index];
+}
+
+unsigned int FillUp::next() {
+  if (_max == 0) {
+    _number = 0;
+    _max = 32768;
+    _cumulated = 0;
+  }
+
+  if (_number == 0) {
+    _number = 1;
+  } else {
+    _number = _number << 1;
+  }
+
+  if (_number == _max) {
+    _max >>= 1;
+    _cumulated += _number;
+    _number = 0;
+  }
+
+  return _cumulated + _number;
 }

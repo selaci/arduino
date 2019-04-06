@@ -9,12 +9,12 @@
  * into commands.
  */
 
-
 /*
- * An array of sequences.
+ * Build the sequences.
  */
-int lengthSequences = 2;
-Sequence* sequences[2] = { new Horizontal(), new Random() };
+int lengthSequences = 6; 
+Sequence* sequences[6] = { new Circular(), new DoubleCircular(), new StarTrek(), 
+                                       new KnightRider(), new DoubleKnightRider(), new FillUp() };
 
 /* An index to keep track of the sequence number. */
 int i = 0;
@@ -101,6 +101,9 @@ void moveStraight(int v) {
       v = 0;
     }
     
+    digitalWrite(11, HIGH);
+    digitalWrite(12, HIGH);
+    
     power = map(v, NEUTRAL_DIVISION_NUMBER, 0, 0, MAX_POWER);
     car->moveForward(power);
 
@@ -113,6 +116,10 @@ void moveStraight(int v) {
     if (v > MAX_DIVISION_NUMBER) { 
       v = MAX_DIVISION_NUMBER;
     }
+
+    digitalWrite(11, LOW);
+    digitalWrite(12, LOW);
+    
     power = map(v, NEUTRAL_DIVISION_NUMBER, MAX_DIVISION_NUMBER, 0, MAX_POWER);
     car->moveBackward(power);
     if (DEBUG) {
@@ -132,6 +139,8 @@ void move(byte message) {
   int h = (message & 0x38) >> 3;
 
   if (h !=  NEUTRAL_DIVISION_NUMBER) {
+    digitalWrite(11, LOW);
+    digitalWrite(12, LOW);
     rotate(h);
   } else {
     int v = message & 0x07;  
@@ -170,6 +179,10 @@ void processMessage(byte message) {
   }
 }
 
+unsigned int next;
+byte low;
+byte high;
+
 void loop() {
   // Read and process all serial data.
   while(Serial.available()) {
@@ -183,9 +196,14 @@ void loop() {
     processMessage(message);
   }
 
+  next = sequences[i]->next();
+  high = (next & 0XFF00) >> 8;
+  low = next & 0xFF;
+
   // Update the LEDs.
   digitalWrite(LATCH, LOW);
-  shiftOut(DATA, SHIFT, MSBFIRST, sequences[i]->next());
+  shiftOut(DATA, SHIFT, MSBFIRST, high);
+  shiftOut(DATA, SHIFT, MSBFIRST, low);
   digitalWrite(LATCH, HIGH);
 
   // Sleep. ZZZzzzZZZzzz ...

@@ -49,25 +49,26 @@ const String UNEXPECTED_DATA = "Unexpected data";
 /*
  * 74HC595 pin layout.
  */
-const byte DATA = 2;  // DS
+const byte DATA = 4;  // DS
 const byte LATCH = 3; // ST_CP
-const byte SHIFT = 4; // ST_CH
+const byte SHIFT = 2; // ST_CH
 
 /*
  * Left motor pin layout.
  */
 
-const byte EN2 = 9;
-const byte IN4 = 7;
-const byte IN3 = 8;
+const byte EN1 = 10;
+const byte IN1 = 9;
+const byte IN2 = 8;
+
+const byte IN3 = 7;
+const byte IN4 = 6;
+const byte EN2 = 5;
 
 /*
  * Right motor pin layout.
  */
 
-const byte EN1 = 10;
-const byte IN1 = 11;
-const byte IN2 = 12;
 
 /*
  * The maximum power that will be delivered to the motors.
