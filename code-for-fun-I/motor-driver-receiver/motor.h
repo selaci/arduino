@@ -27,14 +27,14 @@ class Motor {
    * 
    * @param power The power the motor will use to move forward.
    */
-  void moveForward(byte power);
+  void moveForward(int power);
 
   /*
    * Move the motor backward.
    * 
    * @param power The power the motor will use to move backward.
    */
-  void moveBackward(byte power);
+  void moveBackward(int power);
 
   private:
 
@@ -45,7 +45,7 @@ class Motor {
    *
    * @param power The power value that needs to be sanatised.
    */
-  byte sanatisePower(byte power);
+  int sanatisePower(int power);
 };
 
 #endif

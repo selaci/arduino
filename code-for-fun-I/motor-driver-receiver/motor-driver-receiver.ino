@@ -68,6 +68,11 @@ void rotate(int h) {
     }
     power = map(h, NEUTRAL_DIVISION_NUMBER, MAX_DIVISION_NUMBER, 0, MAX_POWER);
     car->rotateToRight(power / 2);
+    digitalWrite(SIDE_LEFT_FRONT, LOW);
+    digitalWrite(SIDE_LEFT_REAR, LOW);
+    digitalWrite(SIDE_RIGHT_FRONT, HIGH);
+    digitalWrite(SIDE_RIGHT_REAR, HIGH);
+
     if (DEBUG) {
       Serial.print("car->rotateToRight(");
       Serial.print(power);
@@ -79,6 +84,11 @@ void rotate(int h) {
     }
     power = map(h, 0, NEUTRAL_DIVISION_NUMBER, MAX_POWER, 0);
     car->rotateToLeft(power / 2);
+    digitalWrite(SIDE_LEFT_FRONT, HIGH);
+    digitalWrite(SIDE_LEFT_REAR, HIGH);
+    digitalWrite(SIDE_RIGHT_FRONT, LOW);
+    digitalWrite(SIDE_RIGHT_REAR, LOW);
+
     if (DEBUG) {
       Serial.print("car->rotateToLeft(");
       Serial.print(power);
@@ -90,7 +100,7 @@ void rotate(int h) {
 /*
  * Move the car along the vertical axis. Either forward or backward.
  * 
- * @param v The vertical division number. "v" should never be equal 
+ * @param v The vertical division number. "v" should never be equal
  *          to the neutral division number. If that happens then,
  *          there is bug in the code.
  */
@@ -143,6 +153,10 @@ void move(byte message) {
     digitalWrite(12, LOW);
     rotate(h);
   } else {
+    digitalWrite(SIDE_LEFT_FRONT, LOW);
+    digitalWrite(SIDE_LEFT_REAR, LOW);
+    digitalWrite(SIDE_RIGHT_FRONT, LOW);
+    digitalWrite(SIDE_RIGHT_REAR, LOW);
     int v = message & 0x07;  
     moveStraight(v); // Either forward or backward.
   }

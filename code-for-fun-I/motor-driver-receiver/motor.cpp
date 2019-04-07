@@ -10,7 +10,7 @@ Motor::Motor(byte en, byte in1, byte in2) {
   pinMode(_in2, OUTPUT);
 }
 
-byte Motor::sanatisePower(byte power) {
+int Motor::sanatisePower(int power) {
   if (power < 0) {
     return 0;
   } else if (power > 255) {
@@ -19,7 +19,7 @@ byte Motor::sanatisePower(byte power) {
     return power;
   }
 }
-void Motor::moveForward(byte power) {
+void Motor::moveForward(int power) {
   digitalWrite(_in1, HIGH);
   digitalWrite(_in2, LOW);
 
@@ -27,7 +27,7 @@ void Motor::moveForward(byte power) {
   analogWrite(_en, power);
 }
 
-void Motor::moveBackward(byte power) {
+void Motor::moveBackward(int power) {
   digitalWrite(_in1, LOW);
   digitalWrite(_in2, HIGH);
 

@@ -77,4 +77,9 @@ const byte EN2 = 5;
  */
 const byte MAX_POWER = 170;
 
+const byte SIDE_LEFT_FRONT  = A2;
+const byte SIDE_LEFT_REAR   = A0;
+const byte SIDE_RIGHT_FRONT = A3;
+const byte SIDE_RIGHT_REAR  = A1;
+
 #endif
